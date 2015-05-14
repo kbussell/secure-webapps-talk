@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+
+		<title>reveal.js - The HTML Presentation Framework</title>
+
+		<meta name="description" content="Quick introduction to secure web application development using Python">
+		<meta name="author" content="Keith Bussell">
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/moon.css" id="theme">
+        <link rel="stylesheet" href="css/override.css">
+
+		<!-- Code syntax highlighting -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+
+	</head>
+	<body>
+		<div class="reveal">
+			<!-- Any section element inside of this container is displayed as a slide -->
+			<div class="slides">
+				<section>
+					<h2>Secure Web Applications</h2>
+					<h3>With Django and Flask</h3>
+					<p>
+						<small>Keith Bussell / keith@truecar.com / <a href="http://twitter.com/keithb">@keithb</a></small>
+					</p>
+				</section>
+
+                <section>
+                    <h3>Python at TrueCar</h3>
+                    <ul>
+                        <li>TrueCar.com, partner auto-buying websites, dealer tools, APIs</li>
+                        <li>Data analytics and modeling</li>
+                        <li>Automated QA (Robot framework)</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Get in the mood</h2>
+                    <ul>
+                        <li>Start with the assumption that requests are malicious</li>
+                        <li>Don't blindly trust any request you get</li>
+                        <ul>
+                            <li>And don't forget about your APIs! (mobile apps)</li>
+                        </ul>
+                    </ul>
+                    <p></p>
+                    <p></p>
+
+                </section>
+
+				<section>
+                    <h2>Overview</h2>
+                    <ul>
+                        <li>TLS (https)</li>
+                        <li>Authentication</li>
+                        <li>SQL Injection</li>
+                        <li>CSRF</li>
+                        <li>XSS</li>
+                    </ul>
+				</section>
+
+                <section>
+                    <h2>https benefits</h2>
+                    <ul>
+                        <li>Protection from eavesdropping</li>
+                        <li>Protection from tampering</li>
+                        <li>Clients can trust they're talking to you</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>https everywhere</h2>
+                    <ul>
+                        <li>Use https everywhere unless some reason not to</li>
+                        <li>Use TLS, stop supporting SSL</li>
+                        <li>Chromium will mark HTTP as non-secure this year<sup>1</sup></li>
+                    </ul>
+                </section>
+
+				<section>
+					<h2>Authentication - Password storage</h2>
+					<p>
+                        Use PBKDF2, bcrypt, or scrypt
+					</p>
+                    <p>
+                        Regular hashing functions are too easy to calculate
+                    </p>
+				</section>
+
+                <section id="crack-time">
+                    <h2>Authentication - Password storage</h2>
+                    <p>
+                        <small>Max time to crack a random password using $1,500 worth of hardware:</small>
+                    </p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Django 1.3<sup>2</sup></th>
+                                <th>Django 1.4<sup>2</sup></th>
+                                <th>Django 1.7<sup>2</sup></th>
+                                <th>Django 1.8<sup>2</sup></th>
+                                <th>bcrypt<sup>3</sup></th>
+                                <th>scrypt<sup>4</sup></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td>6 alpha numeric</td>
+                            <td>28 ms</td>
+                            <td>47 min</td>
+                            <td>2 hr</td>
+                            <td>2 hr</td>
+                            <td>18 days</td>
+                            <td>2 years</td>
+                        </tr>
+                        <tr>
+                            <td>6 characters</td>
+                            <td>416 ms</td>
+                            <td>12 hr</td>
+                            <td>23 hr</td>
+                            <td>1 days</td>
+                            <td>266 days</td>
+                            <td>23 years</td>
+                        </tr>
+                        <tr>
+                            <td>8 alpha numeric</td>
+                            <td>2 min</td>
+                            <td>126 days</td>
+                            <td>253 days</td>
+                            <td>303 days</td>
+                            <td>191 years</td>
+                            <td>6,000 years</td>
+                        </tr>
+                        <tr>
+                            <td>8 characters</td>
+                            <td>1 hr</td>
+                            <td>12 years</td>
+                            <td>25 years</td>
+                            <td>30 years</td>
+                            <td>7,000 years</td>
+                            <td>220k years</td>
+                        </tr>
+                        <tr>
+                            <td>10 characters</td>
+                            <td>1 year</td>
+                            <td>117k years</td>
+                            <td>234k years</td>
+                            <td>281k years</td>
+                            <td>65M years</td>
+                            <td>2B years</td>
+                        </tr>
+                        <tr>
+                            <td>20 characters</td>
+                            <td>8.6 x 10<sup>19</sup> years</td>
+                            <td>8.6 x 10<sup>24</sup> years</td>
+                            <td>1.7 x 10<sup>25</sup> years</td>
+                            <td>2.1 x 10<sup>25</sup> years</td>
+                            <td>4.8 x 10<sup>27</sup> years</td>
+                            <td>1.5 x 10<sup>29</sup> years</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section>
+                    <section>
+                        <h2>Django - Password Storage</h2>
+                        <ul>
+                            <li>If you're not using v1.8 yet, upgrade ASAP</li>
+                            <li>Consider switching to using bcrypt or scrypt</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h2>Django - Password Storage</h2>
+                        <ul>
+                            <li>Django 1.3: SHA-1</li>
+                            <li>Django 1.4: PBKDF2-HMAC-SHA256 (100,000 loops)</li>
+                            <li>Django 1.7: PBKDF2-HMAC-SHA256 (200,000 loops)</li>
+                            <li>Django 1.8: PBKDF2-HMAC-SHA256 (240,000 loops)</li>
+                            <li><a href="https://github.com/django/django/commit/6732566967888f2c12efee1146940c85c0154e60">https://github.com/django/django/commit/6732566</a></li>
+                        </ul>
+                        <img src="img/django_bump_pbkdf2.png">
+                    </section>
+
+                    <section>
+                        <h2>Django - Password Storage</h2>
+                        <p>First element in PASSWORD_HASHERS is used for writing the hash:</p>
+                        <pre><code class="highlight python">
+PASSWORD_HASHERS = (
+'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+'django.contrib.auth.hashers.BCryptPasswordHasher',
+'django.contrib.auth.hashers.SHA1PasswordHasher',
+'django.contrib.auth.hashers.MD5PasswordHasher',
+'django.contrib.auth.hashers.CryptPasswordHasher',
+)
+                        </code></pre>
+                    </section>
+                    <section>
+                        <h2>Django - Password Storage</h2>
+                        <p>For bcrypt, move BCryptSHA256PasswordHasher to the top:</p>
+                        <pre><code class="highlight python">
+PASSWORD_HASHERS = (
+'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+'django.contrib.auth.hashers.BCryptPasswordHasher',
+'django.contrib.auth.hashers.SHA1PasswordHasher',
+'django.contrib.auth.hashers.MD5PasswordHasher',
+'django.contrib.auth.hashers.CryptPasswordHasher',
+)
+                        </code></pre>
+                    </section>
+                </section>
+
+                <section>
+                    <section>
+                        <h2>Flask - Password Storage</h2>
+                        <p>...</p>
+                    </section>
+                    <section>
+                        <h2>Flask - Password Storage</h2>
+                        <ul>
+                            <li>No built-in support for users or sessions</li>
+                            <li>Flask-User defaults to using bcrypt</li>
+                            <li>If you must do it yourself: use a good KDF, strong work factor, and random salt</li>
+                        </ul>
+                    </section>
+                </section>
+
+                <section>
+                    <h2>Authentication - Sessions</h2>
+                    <ul>
+                        <li>Use Django or Flask's sessions</li>
+                        <li>Consider storing the session in the DB (comes with a cost)</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>SQL Injection</h2>
+                    <p>
+                        If you always use an ORM, and never use raw queries, you're good.
+                    </p>
+                </section>
+
+                <section>
+                    <section>
+                        <h2>SQL Injection - Django</h2>
+                        <p>
+                            If you need to make a raw query, parameterize your inputs
+                            <pre><code class="class python stretch">
+Secret.objects.raw(
+    'SELECT * FROM secret_info WHERE key = %s', [key])
+                            </code></pre>
+                        </p>
+                        <p>
+                            Be careful!
+                            <pre><code class="class python stretch">
+Secret.objects.raw(
+    'SELECT * FROM secret_info WHERE key = "%s"' % key)
+                            </code></pre>
+                            What happens if the input is:
+                            <pre><code>"abc123' OR 'a'='a'"</code></pre>
+                            <pre><code>"abc123'; DELETE FROM secret_info; --"</code></pre>
+                        </p>
+                    </section>
+                    <section>
+                        <h2>SQL Injection - Django</h2>
+                        <p>
+                            Also watch for uses of .extra()
+                            <pre><code class="class python stretch">
+Secret.objects.extra(
+    select={
+        'extra_secret': 'SELECT * FROM secreter_info WHERE key = %s'
+    },
+    select_params=[key]
+)
+                            </code></pre>
+                        </p>
+                    </section>
+                </section>
+
+                <section>
+                    <section>
+                        <h2>SQL Injection - SQLAlchemy</h2>
+                        <p>
+                            <pre><code class="class python stretch">
+conn.execute('SELECT * FROM secret_info WHERE key = ?', key)
+                            </code></pre>
+                        </p>
+                    </section>
+                </section>
+                <section>
+                    <h2>CSRF</h2>
+                    <p>Cross-site Request Forgery</p>
+                    <p>(any request made to your site you didn't intend)</p>
+                </section>
+
+                <section>
+                    <section>
+                        <h2>Example</h2>
+                        <p>
+                            <pre><code class="html stretch">
+&lt;img src="https://awesomebank.com/transfer_money/?amt=25000&to=ABC123"&gt;
+                            </code></pre>
+                        </p>
+                    </section>
+
+                    <section>
+                        <h2>Example</h2>
+                        <p>
+                            <pre><code class="class python stretch">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;script language="JavaScript" type="text/javascript"&gt;
+      function load_image2() {
+        var img2 = new Image();
+        img2.src=
+          "http://www.netflix.com/MoveToTop?movieid=70110672&fromq=true";
+      }
+    &lt;/script&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;img
+      src="http://www.netflix.com/JSON/AddToQueue?movieid=70110672"
+      width="1" height="1" border="0"&gt;
+    &lt;script&gt;setTimeout( 'load_image2()', 2000 );&lt;/script&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+                            </code></pre>
+                        <small>See footnote 5</small>
+                        </p>
+                    </section>
+                </section>
+
+                <section>
+                    <h2>HTTP - GET</h2>
+                    <ul>
+                        <li>Don't perform actions that change data</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>HTTP - POST</h2>
+                    <ul>
+                        <li>Don't read sensitive data out of the query string</li>
+                        <li>Use CSRF protection tokens</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>CSRF protection in Django</h2>
+                    <ul>
+                        <li>CSRF protection is built-in and turned on. Don't turn it off!</li>
+                        <li>Just need to add {% csrf_token %} to your forms</li>
+                        <li>Django deprecated request.REQUEST in 1.7</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>CSRF protection in Flask</h2>
+                    <ul>
+                        <li>Use Flask-WTF (or WTForms)</li>
+                        <li>Use the methods parameter when defining URLs to limit what will be handled</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>XSS</h2>
+                    <p>Cross-site scripting (any JS injection)</p>
+                </section>
+
+                <section>
+                    <h2>XSS</h2>
+                    <p>Your server renders something unsafe</p>
+                    <p>Untrusted user data on page is used to update the DOM which causes JS to be inserted</p>
+                    <p>Unsafe data can come from DB or request</p>
+                </section>
+
+                <section>
+                    <h2>Example</h2>
+                    <p>
+                        <pre><code>
+http://someusefulsite.com/show_me?info=somecoolthing
+                        </code></pre>
+                        <pre><code>
+Sorry, "somecoolthing" is not available
+                        </code></pre>
+                    </p>
+                    <p>Imagine if info was set to &lt;script&gt;nastyjshere();&lt;/script&gt;</p>
+                </section>
+
+                <section>
+                    <h2>Validation</h2>
+                    <p>Validate everywhere: client and server</p>
+                    <p>(but start server-side)</p>
+                </section>
+
+                <section>
+                    <h2>Escaping (encoding)</h2>
+                    <p>Escape all user-supplied data</p>
+                    <p>Know your context: escaping HTML is different than escaping URLs, JS, and CSS</p>
+                </section>
+
+                <section>
+                    <h2>Escaping - Django</h2>
+                    <p>Django automatically escapes all html. If you're inserting:</p>
+                    <ul>
+                        <li>JS, use {{ user_data | escapejs }}</li>
+                        <li>a URL, use {{ user_data | urlencode }}</li>
+                        <li>CSS, be careful!</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Escaping - Flask</h2>
+                    <p>Flask automatically escapes all html... if the extension is .html, .htm, .xml, or .xhtml</p>
+                    <ul>
+                        <li>JS, copy Django's escapejs</li>
+                        <li>a URL, use urlencode</li>
+                        <li>CSS, be careful!</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Caution: Jinja2 w/ Django</h2>
+                    <p>Jinja2 is awesome, but it does not autoescape by default!</p>
+                </section>
+
+                <section>
+                    <h2>Sanitizing</h2>
+                    <p>If you need to accept HTML input (e.g. TinyMCE), sanitize it</p>
+                    <p>bleach (or django-bleach)</p>
+                </section>
+
+                <section>
+                    <h2>Other interesting stuff</h2>
+                    <p>Authorization (permissions)</p>
+                    <p>clickjacking<p>
+                    <p>X-Frame-Options header</p>
+                    <p>CSP headers</p>
+                </section>
+
+                <section>
+                    <h2>Further Reading</h2>
+                    <ul>
+                        <li>Anything from OWASP: <a href="https://www.owasp.org/index.php/Main_Page">https://www.owasp.org/index.php/Main_Page</a></li>
+                        <li>Secure your site with HTTPS: <a href="https://support.google.com/webmasters/answer/6073543">https://support.google.com/webmasters/answer/6073543</a></li>
+                        <li>Secure config generator: https://mozilla.github.io/server-side-tls/ssl-config-generator/</li>
+                        <li>Check your SSL: <a href="https://www.ssllabs.com/ssltest/">https://www.ssllabs.com/ssltest/</a></li>
+                        <li>Django password management: <a href="https://docs.djangoproject.com/en/1.8/topics/auth/passwords/">https://docs.djangoproject.com/en/1.8/topics/auth/passwords/</a></li>
+                        <li>SQL Injection: <a href="https://www.owasp.org/index.php/SQL_Injection">https://www.owasp.org/index.php/SQL_Injection</a></li>
+                    </ul>
+                </section>
+
+				<section id="footnote-section">
+					<h3>Footnotes</h3>
+                    <ol>
+                        <li><a href="https://www.chromium.org/Home/chromium-security/marking-http-as-non-secure">https://www.chromium.org/Home/chromium-security/marking-http-as-non-secure</a></li>
+                        <li>Using $1,500 of hardware<br/><a href="http://buy-antminer.com/antminer-s4">http://buy-antminer.com/antminer-s4</a></li>
+                        <li>Calculated using the theoretical peak performance of 24.18 c/s/$<br/><a href="https://www.usenix.org/system/files/conference/woot14/woot14-malvoni.pdf">https://www.usenix.org/system/files/conference/woot14/woot14-malvoni.pdf</a></li>
+                        <li>"When used for interactive logins, scrypt is &asymp; 2<sup>5</sup> times more expensive to attack than bcrypt"<br/><a href="https://www.tarsnap.com/scrypt/scrypt-slides.pdf">https://www.tarsnap.com/scrypt/scrypt-slides.pdf</a></li>
+                        <li>Netflix CSRF revisited <a href="http://appsecnotes.blogspot.com/2009/01/netflix-csrf-revisited.html">http://appsecnotes.blogspot.com/2009/01/netflix-csrf-revisited.html</a></li>
+                    </ol>
+				</section>
+
+                <section>
+                    <h2>Thank you!</h2>
+                    <p>Questions?</p>
+                </section>
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+
+			// Full list of configuration options available at:
+			// https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+
+				transition: 'slide', // none/fade/slide/convex/concave/zoom
+
+				// Optional reveal.js plugins
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/highlight/highlight.js', async: true, condition: function() { return !!document.querySelector( 'pre code' ); }, callback: function() { hljs.initHighlightingOnLoad(); } },
+					{ src: 'plugin/zoom-js/zoom.js', async: true },
+					{ src: 'plugin/notes/notes.js', async: true }
+				]
+			});
+
+		</script>
+
+	</body>
+</html>

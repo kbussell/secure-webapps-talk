@@ -1,0 +1,25 @@
+#crack-time th, #crack-time td {
+    font-size: 60%;
+}
+
+#crack-time th sup, #crack-time td sup {
+    font-size: 50%;
+}
+
+#crack-time p {
+    text-align: left;
+}
+
+/*#crack-time li {*/
+    /*list-style: none;*/
+    /*font-size: 60%;*/
+/*}*/
+
+#footnote-section p {
+    text-align: left;
+    font-size: 60%;
+}
+
+ul li span .mono {
+    font-family: monospace, serif;
+}
